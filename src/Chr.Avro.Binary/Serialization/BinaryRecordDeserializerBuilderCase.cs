@@ -67,7 +67,25 @@ namespace Chr.Avro.Serialization
                     ParameterExpression? reference = null;
                     Expression? expression = null;
 
-                    if (context.RecursiveReferences.Contains(recordSchema))
+                    if (!context.RecursiveReferences.TryGetValue(schema, out var schemaIsRecursive))
+                    {
+                        var recursion = RecursiveReferenceSearch.Collect(schema);
+
+                        foreach (var recursiveSchema in recursion.RecursiveSchemas)
+                        {
+                            context.RecursiveReferences[recursiveSchema] = true;
+                        }
+
+                        foreach (var nonRecursiveSchema in recursion.NonRecursiveSchemas)
+                        {
+                            context.RecursiveReferences[nonRecursiveSchema] = false;
+                        }
+
+                        schemaIsRecursive = recursion.RecursiveSchemas.Contains(schema);
+                    }
+
+
+                    if (schemaIsRecursive)
                     {
                         parameter = Expression.Parameter(
                             Expression.GetDelegateType(context.Reader.Type.MakeByRefType(), type));

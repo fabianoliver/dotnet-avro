@@ -119,7 +119,6 @@ namespace Chr.Avro.Serialization
         public virtual Expression<BinaryDeserializer<T>> BuildDelegateExpression<T>(Schema schema, BinaryDeserializerBuilderContext? context = default)
         {
             context ??= new BinaryDeserializerBuilderContext();
-            RecursiveReferenceSearch.Collect(schema, context.RecursiveReferences);
 
             // ensure that all assignments are present before building the lambda:
             var root = BuildExpression(typeof(T), schema, context);

@@ -22,7 +22,7 @@ namespace Chr.Avro.Serialization
             Assignments = new Dictionary<ParameterExpression, Expression>();
             References = new Dictionary<(Schema, Type), ParameterExpression>();
             Reader = reader ?? Expression.Parameter(typeof(BinaryReader).MakeByRefType());
-            RecursiveReferences = new HashSet<Schema>();
+            RecursiveReferences = new Dictionary<Schema, bool>();
         }
 
         /// <summary>
@@ -49,6 +49,6 @@ namespace Chr.Avro.Serialization
         /// </summary>
         public virtual IDictionary<(Schema Schema, Type Type), ParameterExpression> References { get; }
 
-        internal ISet<Schema> RecursiveReferences { get; }
+        internal IDictionary<Schema, bool> RecursiveReferences { get; }
     }
 }
