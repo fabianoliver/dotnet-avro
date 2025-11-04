@@ -4,30 +4,26 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Chr.Avro.Abstract;
 
-internal readonly struct RecursionSearchResult
-{
-    public readonly ISet<Schema> NonRecursiveSchemas;
-    public readonly ISet<Schema> RecursiveSchemas;
-
-    public RecursionSearchResult(ISet<Schema> nonRecursiveSchemas, ISet<Schema> recursiveSchemas)
-    {
-        NonRecursiveSchemas = nonRecursiveSchemas;
-        RecursiveSchemas = recursiveSchemas;
-    }
-}
-
+/// <summary>
+/// Utility class that traverses a given <see cref="Schema" /> and identifies which elements of the schema
+/// are on potentially recursive groups
+/// </summary>
 internal static class RecursiveReferenceSearch
 {
-    public static RecursionSearchResult Collect(Schema schema)
+    /// <summary>
+    /// Traverses <paramref name="schema"/> and identifies recursive groups
+    /// </summary>
+    /// <param name="schema">Schema to traverse.</param>
+    /// <param name="results">A dictionary into which the results are written.</param>
+    public static void Collect(Schema schema, IDictionary<Schema, bool> results)
     {
-        var context = new Context();
+        var context = new Context(results);
         Collect(schema, context);
-        return new RecursionSearchResult(context.NonRecursiveSchemas, context.RecursiveSchemas);
     }
 
     private static void Collect(Schema schema, Context context)
     {
-        if (context.RecursiveSchemas.Contains(schema) || context.NonRecursiveSchemas.Contains(schema))
+        if (context.Results.ContainsKey(schema))
         {
             // We have already visited this schema, there's no need to visit again
             return;
@@ -41,8 +37,7 @@ internal static class RecursiveReferenceSearch
             {
                 var item = context.CurrentPath[i];
 
-                context.RecursiveSchemas.Add(item);
-                context.NonRecursiveSchemas.Remove(item);
+                context.Results[item] = true;
 
                 if (Equals(item, schema))
                 {
@@ -71,9 +66,9 @@ internal static class RecursiveReferenceSearch
                 break;
         }
 
-        if (!context.RecursiveSchemas.Contains(schema))
+        if (!context.Results.TryGetValue(schema, out var isRecursive) || !isRecursive)
         {
-            context.NonRecursiveSchemas.Add(schema);
+            context.Results[schema] = false;
         }
 
         Debug.Assert(context.VisitedOnCurrentPath.Contains(schema), "Schema not found on current path anymore");
@@ -111,9 +106,12 @@ internal static class RecursiveReferenceSearch
 
     private sealed class Context
     {
-        public HashSet<Schema> NonRecursiveSchemas { get; } = new HashSet<Schema>();
+        public Context(IDictionary<Schema, bool> results)
+        {
+            Results = results;
+        }
 
-        public HashSet<Schema> RecursiveSchemas { get; } = new HashSet<Schema>();
+        public IDictionary<Schema, bool> Results { get; }
 
         public HashSet<Schema> VisitedOnCurrentPath { get; } = new HashSet<Schema>();
 

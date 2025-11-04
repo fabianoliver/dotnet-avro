@@ -49,6 +49,10 @@ namespace Chr.Avro.Serialization
         /// </summary>
         public virtual IDictionary<(Schema Schema, Type Type), ParameterExpression> References { get; }
 
+        /// <summary>
+        /// Gets a map that associates whether a <see cref="Schema"/> is on any potentially recursive path.
+        /// A value of true means the schema is part of a recursive path, false means it is not.
+        /// </summary>
         internal IDictionary<Schema, bool> RecursiveReferences { get; }
     }
 }

@@ -69,19 +69,9 @@ namespace Chr.Avro.Serialization
 
                     if (!context.RecursiveReferences.TryGetValue(schema, out var schemaIsRecursive))
                     {
-                        var recursion = RecursiveReferenceSearch.Collect(schema);
+                        RecursiveReferenceSearch.Collect(schema, context.RecursiveReferences);
 
-                        foreach (var recursiveSchema in recursion.RecursiveSchemas)
-                        {
-                            context.RecursiveReferences[recursiveSchema] = true;
-                        }
-
-                        foreach (var nonRecursiveSchema in recursion.NonRecursiveSchemas)
-                        {
-                            context.RecursiveReferences[nonRecursiveSchema] = false;
-                        }
-
-                        schemaIsRecursive = recursion.RecursiveSchemas.Contains(schema);
+                        schemaIsRecursive = context.RecursiveReferences[schema];
                     }
 
 

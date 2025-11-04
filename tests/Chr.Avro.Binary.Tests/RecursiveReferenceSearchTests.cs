@@ -93,13 +93,13 @@ public class RecursiveReferenceSearchTests
     [MemberData(nameof(NonRecursiveSchemas), MemberType = typeof(RecursiveReferenceSearchTests))]
     public void IdentifyNonRecursiveSchemas(Schema schema, Schema[] expectedNonRecursive)
     {
-        var result = RecursiveReferenceSearch.Collect(schema);
-        Assert.Empty(result.RecursiveSchemas.Intersect(result.NonRecursiveSchemas));
-        Assert.Empty(result.RecursiveSchemas);
-        Assert.Equal(expectedNonRecursive.Length, result.NonRecursiveSchemas.Count);
+        var results = new Dictionary<Schema, bool>();
+        RecursiveReferenceSearch.Collect(schema, results);
+
+        Assert.Equal(expectedNonRecursive.Length, results.Count);
         foreach (var expected in expectedNonRecursive)
         {
-            Assert.Contains(expected, result.NonRecursiveSchemas);
+            Assert.False(results[expected]);
         }
     }
 
@@ -111,14 +111,12 @@ public class RecursiveReferenceSearchTests
         record.Fields.Add(new RecordField("primitive", intSchema));
         record.Fields.Add(new RecordField("child", record));
 
-        var result = RecursiveReferenceSearch.Collect(record);
-        Assert.Empty(result.RecursiveSchemas.Intersect(result.NonRecursiveSchemas));
+        var results = new Dictionary<Schema, bool>();
+        RecursiveReferenceSearch.Collect(record, results);
 
-        Assert.Single(result.RecursiveSchemas);
-        Assert.Contains(record, result.RecursiveSchemas);
-
-        Assert.Single(result.NonRecursiveSchemas);
-        Assert.Contains(intSchema, result.NonRecursiveSchemas);
+        Assert.Equal(2, results.Count);
+        Assert.True(results[record]);
+        Assert.False(results[intSchema]);
     }
 
     [Fact]
@@ -130,14 +128,12 @@ public class RecursiveReferenceSearchTests
         record.Fields.Add(new RecordField("child", record));
         record.Fields.Add(new RecordField("child2", record));
 
-        var result = RecursiveReferenceSearch.Collect(record);
-        Assert.Empty(result.RecursiveSchemas.Intersect(result.NonRecursiveSchemas));
+        var results = new Dictionary<Schema, bool>();
+        RecursiveReferenceSearch.Collect(record, results);
 
-        Assert.Single(result.RecursiveSchemas);
-        Assert.Contains(record, result.RecursiveSchemas);
-
-        Assert.Single(result.NonRecursiveSchemas);
-        Assert.Contains(intSchema, result.NonRecursiveSchemas);
+        Assert.Equal(2, results.Count);
+        Assert.True(results[record]);
+        Assert.False(results[intSchema]);
     }
 
     [Fact]
@@ -156,19 +152,17 @@ public class RecursiveReferenceSearchTests
         var topLevelRecord = new RecordSchema("g");
         topLevelRecord.Fields.Add(new RecordField("h", recursiveRecord));
 
-        var result = RecursiveReferenceSearch.Collect(topLevelRecord);
-        Assert.Empty(result.RecursiveSchemas.Intersect(result.NonRecursiveSchemas));
+        var results = new Dictionary<Schema, bool>();
+        RecursiveReferenceSearch.Collect(topLevelRecord, results);
 
-        Assert.Equal(4, result.RecursiveSchemas.Count);
-        Assert.Contains(recursiveRecord, result.RecursiveSchemas);
-        Assert.Contains(intermediate, result.RecursiveSchemas);
-        Assert.Contains(unionSchema, result.RecursiveSchemas);
-        Assert.Contains(arraySchema, result.RecursiveSchemas);
-
-        Assert.Equal(3, result.NonRecursiveSchemas.Count);
-        Assert.Contains(topLevelRecord, result.NonRecursiveSchemas);
-        Assert.Contains(nullSchema, result.NonRecursiveSchemas);
-        Assert.Contains(intSchema, result.NonRecursiveSchemas);
+        Assert.Equal(7, results.Count);
+        Assert.True(results[recursiveRecord]);
+        Assert.True(results[intermediate]);
+        Assert.True(results[unionSchema]);
+        Assert.True(results[arraySchema]);
+        Assert.False(results[topLevelRecord]);
+        Assert.False(results[nullSchema]);
+        Assert.False(results[intSchema]);
     }
 
     [Fact]
@@ -179,14 +173,12 @@ public class RecursiveReferenceSearchTests
         recordA.Fields.Add(new RecordField("b", recordB));
         recordB.Fields.Add(new RecordField("a", recordA));
 
-        var result = RecursiveReferenceSearch.Collect(recordA);
-        Assert.Empty(result.RecursiveSchemas.Intersect(result.NonRecursiveSchemas));
+        var results = new Dictionary<Schema, bool>();
+        RecursiveReferenceSearch.Collect(recordA, results);
 
-        Assert.Equal(2, result.RecursiveSchemas.Count);
-        Assert.Contains(recordA, result.RecursiveSchemas);
-        Assert.Contains(recordB, result.RecursiveSchemas);
-
-        Assert.Empty(result.NonRecursiveSchemas);
+        Assert.Equal(2, results.Count);
+        Assert.True(results[recordA]);
+        Assert.True(results[recordB]);
     }
 
     [Fact]
@@ -196,14 +188,12 @@ public class RecursiveReferenceSearchTests
         var arraySchema = new ArraySchema(record);
         record.Fields.Add(new RecordField("children", arraySchema));
 
-        var result = RecursiveReferenceSearch.Collect(record);
-        Assert.Empty(result.RecursiveSchemas.Intersect(result.NonRecursiveSchemas));
+        var results = new Dictionary<Schema, bool>();
+        RecursiveReferenceSearch.Collect(record, results);
 
-        Assert.Equal(2, result.RecursiveSchemas.Count);
-        Assert.Contains(record, result.RecursiveSchemas);
-        Assert.Contains(arraySchema, result.RecursiveSchemas);
-
-        Assert.Empty(result.NonRecursiveSchemas);
+        Assert.Equal(2, results.Count);
+        Assert.True(results[record]);
+        Assert.True(results[arraySchema]);
     }
 
     [Fact]
@@ -213,14 +203,12 @@ public class RecursiveReferenceSearchTests
         var mapSchema = new MapSchema(record);
         record.Fields.Add(new RecordField("children", mapSchema));
 
-        var result = RecursiveReferenceSearch.Collect(record);
-        Assert.Empty(result.RecursiveSchemas.Intersect(result.NonRecursiveSchemas));
+        var results = new Dictionary<Schema, bool>();
+        RecursiveReferenceSearch.Collect(record, results);
 
-        Assert.Equal(2, result.RecursiveSchemas.Count);
-        Assert.Contains(record, result.RecursiveSchemas);
-        Assert.Contains(mapSchema, result.RecursiveSchemas);
-
-        Assert.Empty(result.NonRecursiveSchemas);
+        Assert.Equal(2, results.Count);
+        Assert.True(results[record]);
+        Assert.True(results[mapSchema]);
     }
 
     [Fact]
@@ -236,16 +224,14 @@ public class RecursiveReferenceSearchTests
         topRecord.Fields.Add(new RecordField("a", recordA));
         topRecord.Fields.Add(new RecordField("b", recordB));
 
-        var result = RecursiveReferenceSearch.Collect(topRecord);
-        Assert.Empty(result.RecursiveSchemas.Intersect(result.NonRecursiveSchemas));
+        var results = new Dictionary<Schema, bool>();
+        RecursiveReferenceSearch.Collect(topRecord, results);
 
-        Assert.Empty(result.RecursiveSchemas);
-
-        Assert.Equal(4, result.NonRecursiveSchemas.Count);
-        Assert.Contains(topRecord, result.NonRecursiveSchemas);
-        Assert.Contains(recordA, result.NonRecursiveSchemas);
-        Assert.Contains(recordB, result.NonRecursiveSchemas);
-        Assert.Contains(sharedInt, result.NonRecursiveSchemas);
+        Assert.Equal(4, results.Count);
+        Assert.False(results[topRecord]);
+        Assert.False(results[recordA]);
+        Assert.False(results[recordB]);
+        Assert.False(results[sharedInt]);
     }
 
     [Fact]
@@ -263,16 +249,14 @@ public class RecursiveReferenceSearchTests
         topRecord.Fields.Add(new RecordField("a", recordA));
         topRecord.Fields.Add(new RecordField("b", recordB));
 
-        var result = RecursiveReferenceSearch.Collect(topRecord);
-        Assert.Empty(result.RecursiveSchemas.Intersect(result.NonRecursiveSchemas));
+        var results = new Dictionary<Schema, bool>();
+        RecursiveReferenceSearch.Collect(topRecord, results);
 
-        Assert.Equal(3, result.RecursiveSchemas.Count);
-        Assert.Contains(recordA, result.RecursiveSchemas);
-        Assert.Contains(recordB, result.RecursiveSchemas);
-        Assert.Contains(recordC, result.RecursiveSchemas);
-
-        Assert.Single(result.NonRecursiveSchemas);
-        Assert.Contains(topRecord, result.NonRecursiveSchemas);
+        Assert.Equal(4, results.Count);
+        Assert.True(results[recordA]);
+        Assert.True(results[recordB]);
+        Assert.True(results[recordC]);
+        Assert.False(results[topRecord]);
     }
 
     [Fact]
@@ -284,15 +268,13 @@ public class RecursiveReferenceSearchTests
         record.Fields.Add(new RecordField("name", nameSchema));
         record.Fields.Add(new RecordField("age", ageSchema));
 
-        var result = RecursiveReferenceSearch.Collect(record);
-        Assert.Empty(result.RecursiveSchemas.Intersect(result.NonRecursiveSchemas));
+        var results = new Dictionary<Schema, bool>();
+        RecursiveReferenceSearch.Collect(record, results);
 
-        Assert.Empty(result.RecursiveSchemas);
-
-        Assert.Equal(3, result.NonRecursiveSchemas.Count);
-        Assert.Contains(record, result.NonRecursiveSchemas);
-        Assert.Contains(nameSchema, result.NonRecursiveSchemas);
-        Assert.Contains(ageSchema, result.NonRecursiveSchemas);
+        Assert.Equal(3, results.Count);
+        Assert.False(results[record]);
+        Assert.False(results[nameSchema]);
+        Assert.False(results[ageSchema]);
     }
 
     [Fact]
@@ -300,13 +282,11 @@ public class RecursiveReferenceSearchTests
     {
         var record = new RecordSchema("Empty");
 
-        var result = RecursiveReferenceSearch.Collect(record);
-        Assert.Empty(result.RecursiveSchemas.Intersect(result.NonRecursiveSchemas));
+        var results = new Dictionary<Schema, bool>();
+        RecursiveReferenceSearch.Collect(record, results);
 
-        Assert.Empty(result.RecursiveSchemas);
-
-        Assert.Single(result.NonRecursiveSchemas);
-        Assert.Contains(record, result.NonRecursiveSchemas);
+        Assert.Single(results);
+        Assert.False(results[record]);
     }
 
     [Fact]
@@ -317,14 +297,12 @@ public class RecursiveReferenceSearchTests
         var unionSchema = new UnionSchema(new Schema[] { record, nullSchema });
         record.Fields.Add(new RecordField("next", unionSchema));
 
-        var result = RecursiveReferenceSearch.Collect(record);
-        Assert.Empty(result.RecursiveSchemas.Intersect(result.NonRecursiveSchemas));
+        var results = new Dictionary<Schema, bool>();
+        RecursiveReferenceSearch.Collect(record, results);
 
-        Assert.Equal(2, result.RecursiveSchemas.Count);
-        Assert.Contains(record, result.RecursiveSchemas);
-        Assert.Contains(unionSchema, result.RecursiveSchemas);
-
-        Assert.Single(result.NonRecursiveSchemas);
-        Assert.Contains(nullSchema, result.NonRecursiveSchemas);
+        Assert.Equal(3, results.Count);
+        Assert.True(results[record]);
+        Assert.True(results[unionSchema]);
+        Assert.False(results[nullSchema]);
     }
 }
